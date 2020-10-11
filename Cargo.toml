@@ -1,0 +1,13 @@
+[package]
+name = "egui_winit"
+version = "0.1.0"
+authors = ["Nils Hasenbanck <nils@hasenbanck.de>"]
+edition = "2018"
+description = "Platform code to use egui with winit."
+homepage = "https://github.com/hasenbanck/egui_winit"
+repository = "https://github.com/hasenbanck/egui_winit"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+egui = "0.2"
+winit = "0.23"
