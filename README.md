@@ -1,5 +1,4 @@
-# egui_winit
-
+# egui-winit-platform
 Platform code to run egui using winit.
 
 ## License
