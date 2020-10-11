@@ -273,7 +273,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui-winit-platform"
+name = "egui_winit_platform"
 version = "0.1.0"
 dependencies = [
  "egui",

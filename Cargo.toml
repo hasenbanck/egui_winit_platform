@@ -1,5 +1,5 @@
 [package]
-name = "egui-winit-platform"
+name = "egui_winit_platform"
 version = "0.1.0"
 authors = ["Nils Hasenbanck <nils@hasenbanck.de>"]
 edition = "2018"
