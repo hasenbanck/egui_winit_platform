@@ -1,4 +1,10 @@
 # egui_winit_platform
+
+[![Latest version](https://img.shields.io/crates/v/egui_winit_platform.svg)](https://crates.io/crates/egui_winit_platform)
+[![Documentation](https://docs.rs/egui_winit_platform/badge.svg)](https://docs.rs/egui_winit_platform)
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
+
 Platform code to run egui using winit.
 
 ## Example
