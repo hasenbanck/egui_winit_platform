@@ -8,6 +8,8 @@ use winit::event::{Event, ModifiersState, VirtualKeyCode};
 
 /// Configures the creation of the `WinitPlatform`.
 pub struct WinitPlatformDescriptor {
+    pub physical_width: u32,
+    pub physical_height: u32,
     pub scale_factor: f64,
     pub font_definitions: egui::paint::fonts::FontDefinitions,
     pub style: egui::Style,
@@ -32,6 +34,10 @@ impl WinitPlatform {
 
         let mut raw_input = egui::RawInput::default();
         raw_input.pixels_per_point = Some(descriptor.font_definitions.pixels_per_point);
+
+        raw_input.screen_size =
+            vec2(descriptor.physical_width as f32, descriptor.physical_height as f32)
+                / descriptor.scale_factor as f32;
 
         Self {
             scale_factor: descriptor.scale_factor,
