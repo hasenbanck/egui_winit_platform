@@ -126,9 +126,9 @@ impl WinitPlatform {
         self.context.set_fonts(font_definition);
     }
 
-    /// Updates the internal time for egui used for animations. new_time_nano should be the nano second sine some point in time (for example application start).
-    pub fn update_time(&mut self, elapsed_nanos: u128) {
-        self.raw_input.time = elapsed_nanos as f64 * 1e-9;
+    /// Updates the internal time for egui used for animations. elapsed_seconds should be the seconds since some point in time (for example application start).
+    pub fn update_time(&mut self, elapsed_seconds: f64) {
+        self.raw_input.time = elapsed_seconds;
     }
 
     /// Starts a new frame by providing a new `Ui` instance to write into.
