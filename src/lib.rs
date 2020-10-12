@@ -1,32 +1,43 @@
-use std::sync::{Arc};
+//! A platform integration to use [egui](https://github.com/emilk/egui) with [winit](https://github.com/rust-windowing/winit).
+//!
+//! You need to create a [`Platform`] and feed it with `winit::event::Event` events.
+//! Use `begin_frame()` and `end_frame()` to start drawing the egui UI.
+//! A basic usage example can be found [here](https://github.com/hasenbanck/egui_example).
+#![warn(missing_docs)]
 
-use egui::math::{pos2, vec2};
+use std::sync::Arc;
+
 use egui::Key;
+use egui::math::{pos2, vec2};
+use winit::event::{Event, ModifiersState, VirtualKeyCode};
 use winit::event::VirtualKeyCode::*;
 use winit::event::WindowEvent::*;
-use winit::event::{Event, ModifiersState, VirtualKeyCode};
 
-/// Configures the creation of the `WinitPlatform`.
-pub struct WinitPlatformDescriptor {
+/// Configures the creation of the `Platform`.
+pub struct PlatformDescriptor {
+    /// Width of the window in physical pixel.
     pub physical_width: u32,
+    /// Height of the window in physical pixel.
     pub physical_height: u32,
+    /// HiDPI scale factor.
     pub scale_factor: f64,
+    /// Egui font configuration.
     pub font_definitions: egui::paint::fonts::FontDefinitions,
+    /// Egui style configuration.
     pub style: egui::Style,
 }
 
-/// Provides the integratin between egui and winit.
-pub struct WinitPlatform {
+/// Provides the integration between egui and winit.
+pub struct Platform {
     scale_factor: f64,
     context: Arc<egui::Context>,
-    font_definitions: egui::paint::fonts::FontDefinitions,
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
 }
 
-impl WinitPlatform {
-    /// Creates a new `WinitPlatform`.
-    pub fn new(descriptor: WinitPlatformDescriptor) -> Self {
+impl Platform {
+    /// Creates a new `Platform`.
+    pub fn new(descriptor: PlatformDescriptor) -> Self {
         let context = egui::Context::new();
 
         context.set_fonts(descriptor.font_definitions.clone());
@@ -42,13 +53,12 @@ impl WinitPlatform {
         Self {
             scale_factor: descriptor.scale_factor,
             context,
-            font_definitions: descriptor.font_definitions,
             raw_input,
             modifier_state: winit::event::ModifiersState::empty(),
         }
     }
 
-    /// Handles the given winit event and updates the egui context.
+    /// Handles the given winit event and updates the egui context. Should be called before starting a new frame with `start_frame()`.
     pub fn handle_event<T>(&mut self, winit_event: &Event<T>) {
         match winit_event {
             Event::WindowEvent {
@@ -125,14 +135,7 @@ impl WinitPlatform {
         }
     }
 
-    /// Rescales the fonts based on the current dpi mode.
-    pub fn rescale_fonts(&mut self, hidpi_factor: f32) {
-        self.font_definitions.pixels_per_point = hidpi_factor;
-        let font_definition = self.font_definitions.clone();
-        self.context.set_fonts(font_definition);
-    }
-
-    /// Updates the internal time for egui used for animations. elapsed_seconds should be the seconds since some point in time (for example application start).
+    /// Updates the internal time for egui used for animations. `elapsed_seconds` should be the seconds since some point in time (for example application start).
     pub fn update_time(&mut self, elapsed_seconds: f64) {
         self.raw_input.time = elapsed_seconds;
     }
@@ -142,7 +145,7 @@ impl WinitPlatform {
         self.context.begin_frame(self.raw_input.take())
     }
 
-    /// Ends the frame. Returns what has happened as `Outpout` and gives you the draw instructions as `PaintJobs`.
+    /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
     pub fn end_frame(&self) -> (egui::Output, egui::PaintJobs) {
         self.context.end_frame()
     }
