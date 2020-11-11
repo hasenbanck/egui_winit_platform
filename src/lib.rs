@@ -141,12 +141,12 @@ impl Platform {
     }
 
     /// Starts a new frame by providing a new `Ui` instance to write into.
-    pub fn begin_frame(&mut self) -> egui::Ui {
-        self.context.begin_frame(self.raw_input.take())
+    pub fn begin_frame(&mut self) {
+        self.context.begin_frame(self.raw_input.take());
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
-    pub fn end_frame(&self) -> (egui::Output, egui::PaintJobs) {
+    pub fn end_frame(&self) -> (egui::Output, Vec<(egui::Rect, egui::PaintCmd)>) {
         self.context.end_frame()
     }
 
