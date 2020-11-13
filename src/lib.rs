@@ -7,11 +7,11 @@
 
 use std::sync::Arc;
 
-use egui::Key;
 use egui::math::{pos2, vec2};
-use winit::event::{Event, ModifiersState, VirtualKeyCode};
+use egui::Key;
 use winit::event::VirtualKeyCode::*;
 use winit::event::WindowEvent::*;
+use winit::event::{Event, ModifiersState, VirtualKeyCode};
 
 /// Configures the creation of the `Platform`.
 pub struct PlatformDescriptor {
@@ -46,9 +46,10 @@ impl Platform {
         let mut raw_input = egui::RawInput::default();
         raw_input.pixels_per_point = Some(descriptor.font_definitions.pixels_per_point);
 
-        raw_input.screen_size =
-            vec2(descriptor.physical_width as f32, descriptor.physical_height as f32)
-                / descriptor.scale_factor as f32;
+        raw_input.screen_size = vec2(
+            descriptor.physical_width as f32,
+            descriptor.physical_height as f32,
+        ) / descriptor.scale_factor as f32;
 
         Self {
             scale_factor: descriptor.scale_factor,
@@ -141,12 +142,12 @@ impl Platform {
     }
 
     /// Starts a new frame by providing a new `Ui` instance to write into.
-    pub fn begin_frame(&mut self) -> egui::Ui {
-        self.context.begin_frame(self.raw_input.take())
+    pub fn begin_frame(&mut self) {
+        self.context.begin_frame(self.raw_input.take());
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
-    pub fn end_frame(&self) -> (egui::Output, egui::PaintJobs) {
+    pub fn end_frame(&self) -> (egui::Output, Vec<(egui::Rect, egui::PaintCmd)>) {
         self.context.end_frame()
     }
 
