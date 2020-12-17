@@ -116,6 +116,7 @@ impl Platform {
                                     self.raw_input.events.push(egui::Event::Key {
                                         key,
                                         pressed: input.state == winit::event::ElementState::Pressed,
+                                        modifiers: winit_to_egui_modifiers(self.modifier_state),
                                     });
                                 }
                             }
@@ -123,7 +124,10 @@ impl Platform {
                     }
                 }
                 ReceivedCharacter(ch) => {
-                    if is_printable(*ch) {
+                    if is_printable(*ch)
+                        && !self.modifier_state.ctrl()
+                        && !self.modifier_state.logo()
+                    {
                         self.raw_input
                             .events
                             .push(egui::Event::Text(ch.to_string()));
@@ -168,21 +172,43 @@ fn winit_to_egui_key_code(key: VirtualKeyCode) -> Option<egui::Key> {
         End => Key::End,
         PageDown => Key::PageDown,
         PageUp => Key::PageUp,
-        Left => Key::Left,
-        Up => Key::Up,
-        Right => Key::Right,
-        Down => Key::Down,
+        Left => Key::ArrowLeft,
+        Up => Key::ArrowUp,
+        Right => Key::ArrowRight,
+        Down => Key::ArrowDown,
         Back => Key::Backspace,
         Return => Key::Enter,
         Tab => Key::Tab,
-        LAlt | RAlt => Key::Alt,
-        LShift | RShift => Key::Shift,
-        LControl | RControl => Key::Control,
-        LWin | RWin => Key::Logo,
+        Space => Key::Space,
+
+        A => Key::A,
+        K => Key::K,
+        U => Key::U,
+        W => Key::W,
+        Z => Key::Z,
+
         _ => {
             return None;
         }
     })
+}
+
+/// Translates winit to egui modifier keys.
+#[inline]
+fn winit_to_egui_modifiers(modifiers: ModifiersState) -> egui::Modifiers {
+    egui::Modifiers {
+        alt: modifiers.alt(),
+        ctrl: modifiers.ctrl(),
+        shift: modifiers.shift(),
+        #[cfg(target_os = "macos")]
+        mac_cmd: modifiers.logo(),
+        #[cfg(target_os = "macos")]
+        command: modifiers.logo(),
+        #[cfg(not(target_os = "macos"))]
+        mac_cmd: false,
+        #[cfg(not(target_os = "macos"))]
+        command: modifiers.ctrl(),
+    }
 }
 
 /// We only want printable characters and ignore all special keys.
