@@ -5,10 +5,12 @@
 //! A basic usage example can be found [here](https://github.com/hasenbanck/egui_example).
 #![warn(missing_docs)]
 
-use std::sync::Arc;
-
-use egui::math::{pos2, vec2};
+use clipboard::{ClipboardContext, ClipboardProvider};
 use egui::Key;
+use egui::{
+    math::{pos2, vec2},
+    CtxRef,
+};
 use winit::event::VirtualKeyCode::*;
 use winit::event::WindowEvent::*;
 use winit::event::{Event, ModifiersState, VirtualKeyCode};
@@ -27,18 +29,36 @@ pub struct PlatformDescriptor {
     pub style: egui::Style,
 }
 
+fn handle_output(output: &egui::Output, clipboard: Option<&mut ClipboardContext>) {
+    if let Some(url) = &output.open_url {
+        if let Err(err) = webbrowser::open(&url) {
+            eprintln!("Failed to open url: {}", err);
+        }
+    }
+
+    if !output.copied_text.is_empty() {
+        if let Some(clipboard) = clipboard {
+            if let Err(err) = clipboard.set_contents(output.copied_text.clone()) {
+                eprintln!("Copy/Cut error: {}", err);
+            }
+        }
+    }
+}
+
 /// Provides the integration between egui and winit.
 pub struct Platform {
     scale_factor: f64,
-    context: Arc<egui::Context>,
+    context: CtxRef,
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
+
+    clipboard: Option<ClipboardContext>,
 }
 
 impl Platform {
     /// Creates a new `Platform`.
     pub fn new(descriptor: PlatformDescriptor) -> Self {
-        let context = egui::Context::new();
+        let context = CtxRef::default();
 
         context.set_fonts(descriptor.font_definitions.clone());
         context.set_style(descriptor.style);
@@ -46,16 +66,20 @@ impl Platform {
         let mut raw_input = egui::RawInput::default();
         raw_input.pixels_per_point = Some(descriptor.font_definitions.pixels_per_point);
 
-        raw_input.screen_size = vec2(
-            descriptor.physical_width as f32,
-            descriptor.physical_height as f32,
-        ) / descriptor.scale_factor as f32;
+        raw_input.screen_rect = Some(egui::Rect::from_min_size(
+            Default::default(),
+            vec2(
+                descriptor.physical_width as f32,
+                descriptor.physical_height as f32,
+            ) / descriptor.scale_factor as f32,
+        ));
 
         Self {
             scale_factor: descriptor.scale_factor,
             context,
             raw_input,
             modifier_state: winit::event::ModifiersState::empty(),
+            clipboard: ClipboardContext::new().ok(),
         }
     }
 
@@ -67,9 +91,11 @@ impl Platform {
                 event,
             } => match event {
                 Resized(physical_size) => {
-                    self.raw_input.screen_size =
+                    self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
+                        Default::default(),
                         vec2(physical_size.width as f32, physical_size.height as f32)
-                            / self.scale_factor as f32;
+                            / self.scale_factor as f32,
+                    ));
                 }
                 ScaleFactorChanged {
                     scale_factor,
@@ -77,9 +103,11 @@ impl Platform {
                 } => {
                     self.scale_factor = *scale_factor;
                     self.raw_input.pixels_per_point = Some(*scale_factor as f32);
-                    self.raw_input.screen_size =
+                    self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
+                        Default::default(),
                         vec2(new_inner_size.width as f32, new_inner_size.height as f32)
-                            / self.scale_factor as f32;
+                            / self.scale_factor as f32,
+                    ));
                 }
                 MouseInput { state, .. } => {
                     self.raw_input.mouse_down = *state == winit::event::ElementState::Pressed;
@@ -108,17 +136,26 @@ impl Platform {
                 ModifiersChanged(input) => self.modifier_state = *input,
                 KeyboardInput { input, .. } => {
                     if let Some(virtual_keycode) = input.virtual_keycode {
-                        match virtual_keycode {
-                            VirtualKeyCode::Copy => self.raw_input.events.push(egui::Event::Copy),
-                            VirtualKeyCode::Cut => self.raw_input.events.push(egui::Event::Cut),
-                            _ => {
-                                if let Some(key) = winit_to_egui_key_code(virtual_keycode) {
-                                    self.raw_input.events.push(egui::Event::Key {
-                                        key,
-                                        pressed: input.state == winit::event::ElementState::Pressed,
-                                        modifiers: winit_to_egui_modifiers(self.modifier_state),
-                                    });
+                        let pressed = input.state == winit::event::ElementState::Pressed;
+
+                        if pressed {
+                            let is_ctrl = self.modifier_state.ctrl();
+                            if is_ctrl && virtual_keycode == VirtualKeyCode::C {
+                                self.raw_input.events.push(egui::Event::Copy)
+                            } else if is_ctrl && virtual_keycode == VirtualKeyCode::X {
+                                self.raw_input.events.push(egui::Event::Cut)
+                            } else if is_ctrl && virtual_keycode == VirtualKeyCode::V {
+                                if let Some(ref mut clipboard) = self.clipboard {
+                                    if let Ok(contents) = clipboard.get_contents() {
+                                        self.raw_input.events.push(egui::Event::Text(contents))
+                                    }
                                 }
+                            } else if let Some(key) = winit_to_egui_key_code(virtual_keycode) {
+                                self.raw_input.events.push(egui::Event::Key {
+                                    key,
+                                    pressed: input.state == winit::event::ElementState::Pressed,
+                                    modifiers: winit_to_egui_modifiers(self.modifier_state),
+                                });
                             }
                         }
                     }
@@ -142,7 +179,7 @@ impl Platform {
 
     /// Updates the internal time for egui used for animations. `elapsed_seconds` should be the seconds since some point in time (for example application start).
     pub fn update_time(&mut self, elapsed_seconds: f64) {
-        self.raw_input.time = elapsed_seconds;
+        self.raw_input.time = Some(elapsed_seconds);
     }
 
     /// Starts a new frame by providing a new `Ui` instance to write into.
@@ -151,12 +188,14 @@ impl Platform {
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
-    pub fn end_frame(&self) -> (egui::Output, Vec<(egui::Rect, egui::PaintCmd)>) {
-        self.context.end_frame()
+    pub fn end_frame(&mut self) -> (egui::Output, Vec<(egui::Rect, egui::PaintCmd)>) {
+        let parts = self.context.end_frame();
+        handle_output(&parts.0, self.clipboard.as_mut());
+        parts
     }
 
     /// Returns the internal egui context.
-    pub fn context(&self) -> Arc<egui::Context> {
+    pub fn context(&self) -> CtxRef {
         self.context.clone()
     }
 }
