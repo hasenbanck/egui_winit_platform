@@ -5,6 +5,7 @@
 //! A basic usage example can be found [here](https://github.com/hasenbanck/egui_example).
 #![warn(missing_docs)]
 
+#[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 use egui::Key;
 use egui::{
@@ -29,13 +30,17 @@ pub struct PlatformDescriptor {
     pub style: egui::Style,
 }
 
-fn handle_output(output: &egui::Output, clipboard: Option<&mut ClipboardContext>) {
+#[cfg(feature = "webbrowser")]
+fn handle_links(output: &egui::Output) {
     if let Some(url) = &output.open_url {
         if let Err(err) = webbrowser::open(&url) {
             eprintln!("Failed to open url: {}", err);
         }
     }
+}
 
+#[cfg(feature = "clipboard")]
+fn handle_clipboard(output: &egui::Output, clipboard: Option<&mut ClipboardContext>) {
     if !output.copied_text.is_empty() {
         if let Some(clipboard) = clipboard {
             if let Err(err) = clipboard.set_contents(output.copied_text.clone()) {
@@ -52,6 +57,7 @@ pub struct Platform {
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
 
+    #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
 }
 
@@ -79,6 +85,7 @@ impl Platform {
             context,
             raw_input,
             modifier_state: winit::event::ModifiersState::empty(),
+            #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
         }
     }
@@ -145,6 +152,7 @@ impl Platform {
                             } else if is_ctrl && virtual_keycode == VirtualKeyCode::X {
                                 self.raw_input.events.push(egui::Event::Cut)
                             } else if is_ctrl && virtual_keycode == VirtualKeyCode::V {
+                                #[cfg(feature = "clipboard")]
                                 if let Some(ref mut clipboard) = self.clipboard {
                                     if let Ok(contents) = clipboard.get_contents() {
                                         self.raw_input.events.push(egui::Event::Text(contents))
@@ -189,8 +197,16 @@ impl Platform {
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
     pub fn end_frame(&mut self) -> (egui::Output, Vec<(egui::Rect, egui::PaintCmd)>) {
+        // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
+        #[allow(clippy::let_and_return)]
         let parts = self.context.end_frame();
-        handle_output(&parts.0, self.clipboard.as_mut());
+
+        #[cfg(feature = "clipboard")]
+        handle_clipboard(&parts.0, self.clipboard.as_mut());
+
+        #[cfg(feature = "webbrowser")]
+        handle_links(&parts.0);
+
         parts
     }
 
