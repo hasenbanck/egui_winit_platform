@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 
 [dependencies]
-epi = { git = "https://github.com/emilk/egui", rev = "90a0ce969beb96506d5a3e9a012765ae46774969" }
+epi = "0.8.0"
 winit = "0.24"
 clipboard = { version = "0.5.0", optional = true}
 webbrowser = { version = "0.5.5", optional = true }
