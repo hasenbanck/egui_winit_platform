@@ -7,11 +7,11 @@
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
-use egui::Key;
 use egui::{
     math::{pos2, vec2},
     CtxRef,
 };
+use egui::{paint::ClippedShape, Key};
 use winit::event::VirtualKeyCode::*;
 use winit::event::WindowEvent::*;
 use winit::event::{Event, ModifiersState, VirtualKeyCode};
@@ -25,7 +25,7 @@ pub struct PlatformDescriptor {
     /// HiDPI scale factor.
     pub scale_factor: f64,
     /// Egui font configuration.
-    pub font_definitions: egui::paint::fonts::FontDefinitions,
+    pub font_definitions: egui::FontDefinitions,
     /// Egui style configuration.
     pub style: egui::Style,
 }
@@ -68,17 +68,17 @@ impl Platform {
 
         context.set_fonts(descriptor.font_definitions.clone());
         context.set_style(descriptor.style);
-
-        let mut raw_input = egui::RawInput::default();
-        raw_input.pixels_per_point = Some(descriptor.font_definitions.pixels_per_point);
-
-        raw_input.screen_rect = Some(egui::Rect::from_min_size(
-            Default::default(),
-            vec2(
-                descriptor.physical_width as f32,
-                descriptor.physical_height as f32,
-            ) / descriptor.scale_factor as f32,
-        ));
+        let raw_input = egui::RawInput {
+            pixels_per_point: Some(descriptor.scale_factor as f32),
+            screen_rect: Some(egui::Rect::from_min_size(
+                Default::default(),
+                vec2(
+                    descriptor.physical_width as f32,
+                    descriptor.physical_height as f32,
+                ) / descriptor.scale_factor as f32,
+            )),
+            ..Default::default()
+        };
 
         Self {
             scale_factor: descriptor.scale_factor,
@@ -196,7 +196,7 @@ impl Platform {
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
-    pub fn end_frame(&mut self) -> (egui::Output, Vec<(egui::Rect, egui::PaintCmd)>) {
+    pub fn end_frame(&mut self) -> (egui::Output, Vec<ClippedShape>) {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
         let parts = self.context.end_frame();

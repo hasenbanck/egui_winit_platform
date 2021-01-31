@@ -292,13 +292,11 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
 name = "egui"
-version = "0.6.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e53b7f113b52fa8146de4f18ec93c3fb5c92250b970ef8f503372af5d737379"
+checksum = "6f550e7f51023f5ea92eae420fae368a52927deed22dcbefc7c22c140b02d7b4"
 dependencies = [
- "ahash",
- "atomic_refcell",
- "rusttype",
+ "epaint",
 ]
 
 [[package]]
@@ -309,6 +307,24 @@ dependencies = [
  "egui",
  "webbrowser",
  "winit",
+]
+
+[[package]]
+name = "emath"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d876a5b910712537191b8d9aa1550a212a62fd2dd6f44f6ca5c671cf89bb841"
+
+[[package]]
+name = "epaint"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fdb7fdb35896a43ad950a28b5188240cfbd186b22aa50269978575170b73c83"
+dependencies = [
+ "ahash",
+ "atomic_refcell",
+ "emath",
+ "rusttype",
 ]
 
 [[package]]
