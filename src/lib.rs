@@ -9,15 +9,12 @@ use epi::egui;
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
-use egui::Key;
-use egui::{
+use epi::egui::{
     math::{pos2, vec2},
-    CtxRef,
+    paint::ClippedShape,
+    CtxRef, Key,
 };
-use winit::event::VirtualKeyCode::*;
-use winit::event::WindowEvent::*;
-use winit::event::{Event, ModifiersState, VirtualKeyCode};
-use epi::egui::paint::ClippedShape;
+use winit::event::{Event, ModifiersState, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*};
 
 /// Configures the creation of the `Platform`.
 pub struct PlatformDescriptor {
