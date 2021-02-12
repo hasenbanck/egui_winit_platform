@@ -56,6 +56,7 @@ pub struct Platform {
     context: CtxRef,
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
+    pointer_pos: egui::Pos2,
 
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
@@ -85,6 +86,7 @@ impl Platform {
             context,
             raw_input,
             modifier_state: winit::event::ModifiersState::empty(),
+            pointer_pos: Default::default(),
             #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
         }
@@ -116,8 +118,21 @@ impl Platform {
                             / self.scale_factor as f32,
                     ));
                 }
-                MouseInput { state, .. } => {
-                    self.raw_input.mouse_down = *state == winit::event::ElementState::Pressed;
+                MouseInput { state, button, .. } => {
+                    if let winit::event::MouseButton::Other(..) = button {
+                    } else {
+                        self.raw_input.events.push(egui::Event::PointerButton {
+                            pos: self.pointer_pos,
+                            button: match button {
+                                winit::event::MouseButton::Left => egui::PointerButton::Primary,
+                                winit::event::MouseButton::Right => egui::PointerButton::Secondary,
+                                winit::event::MouseButton::Middle => egui::PointerButton::Middle,
+                                winit::event::MouseButton::Other(_) => unreachable!(),
+                            },
+                            pressed: *state == winit::event::ElementState::Pressed,
+                            modifiers: Default::default(),
+                        });
+                    }
                 }
                 MouseWheel { delta, .. } => {
                     match delta {
@@ -132,13 +147,16 @@ impl Platform {
                     }
                 }
                 CursorMoved { position, .. } => {
-                    self.raw_input.mouse_pos = Some(pos2(
+                    self.pointer_pos = pos2(
                         position.x as f32 / self.raw_input.pixels_per_point.unwrap(),
                         position.y as f32 / self.raw_input.pixels_per_point.unwrap(),
-                    ));
+                    );
+                    self.raw_input
+                        .events
+                        .push(egui::Event::PointerMoved(self.pointer_pos));
                 }
                 CursorLeft { .. } => {
-                    self.raw_input.mouse_pos = None;
+                    self.raw_input.events.push(egui::Event::PointerGone);
                 }
                 ModifiersChanged(input) => self.modifier_state = *input,
                 KeyboardInput { input, .. } => {
