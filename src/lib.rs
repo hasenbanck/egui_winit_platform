@@ -148,8 +148,8 @@ impl Platform {
                 }
                 CursorMoved { position, .. } => {
                     self.pointer_pos = pos2(
-                        position.x as f32 / self.raw_input.pixels_per_point.unwrap(),
-                        position.y as f32 / self.raw_input.pixels_per_point.unwrap(),
+                        position.x as f32 / self.scale_factor as f32,
+                        position.y as f32 / self.scale_factor as f32,
                     );
                     self.raw_input
                         .events
