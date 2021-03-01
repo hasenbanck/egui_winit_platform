@@ -211,6 +211,8 @@ impl Platform {
     /// Starts a new frame by providing a new `Ui` instance to write into.
     pub fn begin_frame(&mut self) {
         self.context.begin_frame(self.raw_input.take());
+        // Reset the tooked pixels_per_point (our scale_factor)
+        self.raw_input.pixels_per_point = Some(self.scale_factor as f32);
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
