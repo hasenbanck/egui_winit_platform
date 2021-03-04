@@ -203,6 +203,31 @@ impl Platform {
         }
     }
 
+    /// Returns `true` if egui should handle the event exclusively. Check this to
+    /// avoid unexpected interactions, e.g. a mouse click registering "behind" the UI.
+    pub fn captures_event<T>(&self, winit_event: &Event<T>) -> bool {
+        match winit_event {
+            Event::WindowEvent {
+                window_id: _window_id,
+                event,
+            } => match event {
+                ReceivedCharacter(_) |
+                KeyboardInput { .. } |
+                ModifiersChanged(_) => self.context().wants_keyboard_input(),
+
+                MouseWheel { .. } |
+                MouseInput { .. } => self.context().wants_pointer_input(),
+
+                CursorMoved { .. } => self.context().is_using_pointer(),
+
+                _ => false
+            }
+
+            _ => false
+
+        }
+    }
+
     /// Updates the internal time for egui used for animations. `elapsed_seconds` should be the seconds since some point in time (for example application start).
     pub fn update_time(&mut self, elapsed_seconds: f64) {
         self.raw_input.time = Some(elapsed_seconds);
