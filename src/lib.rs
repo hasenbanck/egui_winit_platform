@@ -32,8 +32,10 @@ pub struct PlatformDescriptor {
 
 #[cfg(feature = "webbrowser")]
 fn handle_links(output: &egui::Output) {
-    if let Some(url) = &output.open_url {
-        if let Err(err) = webbrowser::open(&url) {
+    if let Some(open_url) = &output.open_url {
+        // This does not handle open_url.new_tab
+        // webbrowser does not support web anyway
+        if let Err(err) = webbrowser::open(&open_url.url) {
             eprintln!("Failed to open url: {}", err);
         }
     }
@@ -211,20 +213,18 @@ impl Platform {
                 window_id: _window_id,
                 event,
             } => match event {
-                ReceivedCharacter(_) |
-                KeyboardInput { .. } |
-                ModifiersChanged(_) => self.context().wants_keyboard_input(),
+                ReceivedCharacter(_) | KeyboardInput { .. } | ModifiersChanged(_) => {
+                    self.context().wants_keyboard_input()
+                }
 
-                MouseWheel { .. } |
-                MouseInput { .. } => self.context().wants_pointer_input(),
+                MouseWheel { .. } | MouseInput { .. } => self.context().wants_pointer_input(),
 
                 CursorMoved { .. } => self.context().is_using_pointer(),
 
-                _ => false
-            }
+                _ => false,
+            },
 
-            _ => false
-
+            _ => false,
         }
     }
 
