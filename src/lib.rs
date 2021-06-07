@@ -18,6 +18,7 @@ use winit::event::WindowEvent::*;
 use winit::event::{Event, ModifiersState, VirtualKeyCode};
 
 /// Configures the creation of the `Platform`.
+#[derive(Debug, Default)]
 pub struct PlatformDescriptor {
     /// Width of the window in physical pixel.
     pub physical_width: u32,
