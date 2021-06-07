@@ -102,6 +102,10 @@ impl Platform {
                 window_id: _window_id,
                 event,
             } => match event {
+                // Resize with 0 width and height is used by winit to signal a minimize event on Windows.
+                // See: https://github.com/rust-windowing/winit/issues/208
+                // There is nothing to do for minimize events, so it is ignored here. This solves an issue where
+                // egui window positions would be changed when minimizing on Windows.
                 Resized(PhysicalSize {
                     width: 0,
                     height: 0,
