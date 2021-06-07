@@ -12,6 +12,7 @@ use egui::{
     CtxRef,
 };
 use egui::{paint::ClippedShape, Key};
+use winit::dpi::PhysicalSize;
 use winit::event::VirtualKeyCode::*;
 use winit::event::WindowEvent::*;
 use winit::event::{Event, ModifiersState, VirtualKeyCode};
@@ -101,6 +102,10 @@ impl Platform {
                 window_id: _window_id,
                 event,
             } => match event {
+                Resized(PhysicalSize {
+                    width: 0,
+                    height: 0,
+                }) => {}
                 Resized(physical_size) => {
                     self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
                         Default::default(),
