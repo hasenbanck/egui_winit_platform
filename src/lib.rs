@@ -6,7 +6,7 @@
 #![warn(missing_docs)]
 
 #[cfg(feature = "clipboard")]
-use clipboard::{ClipboardContext, ClipboardProvider};
+use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{
     math::{pos2, vec2},
     CtxRef,
