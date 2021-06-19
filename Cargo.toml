@@ -10,11 +10,12 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 
 [dependencies]
-egui = "0.12"
+egui = { version = "0.12", default-features = false, features = ["single_threaded"] }
 winit = "0.25"
 copypasta = { version = "0.7.1", optional = true }
 webbrowser = { version = "0.5.5", optional = true }
 
 [features]
-default = []
+default = ["default_fonts"]
 clipboard = ["copypasta"]
+default_fonts = ["egui/default_fonts"]
