@@ -6,7 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Updated
+
+## [0.9.0] - 2021-06-25
+### Updated
 - Target egui 0.13
+- Fix minimize on Windows.
+- Derive Debug and Default on PlatformDescriptor.
+- Replace clipboard dependency with copypasta.
+- Allow default fonts to be replaced.
 
 ## [0.8.0] - 2021-06-05
 ### Updated
