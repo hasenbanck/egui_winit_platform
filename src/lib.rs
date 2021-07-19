@@ -170,7 +170,10 @@ impl Platform {
                 CursorLeft { .. } => {
                     self.raw_input.events.push(egui::Event::PointerGone);
                 }
-                ModifiersChanged(input) => self.modifier_state = *input,
+                ModifiersChanged(input) => {
+                    self.modifier_state = *input;
+                    self.raw_input.modifiers = winit_to_egui_modifiers(*input);
+                }
                 KeyboardInput { input, .. } => {
                     if let Some(virtual_keycode) = input.virtual_keycode {
                         let pressed = input.state == winit::event::ElementState::Pressed;
