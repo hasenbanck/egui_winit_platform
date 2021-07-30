@@ -147,15 +147,25 @@ impl Platform {
                     }
                 }
                 MouseWheel { delta, .. } => {
-                    match delta {
+                    let mut delta = match delta {
                         winit::event::MouseScrollDelta::LineDelta(x, y) => {
-                            let line_height = 24.0; // TODO as in egui_glium
-                            self.raw_input.scroll_delta = vec2(*x, *y) * line_height;
+                            let line_height = 8.0; // TODO as in egui_glium
+                            vec2(*x, *y) * line_height
                         }
                         winit::event::MouseScrollDelta::PixelDelta(delta) => {
-                            // Actually point delta
-                            self.raw_input.scroll_delta = vec2(delta.x as f32, delta.y as f32);
+                            vec2(delta.x as f32, delta.y as f32)
                         }
+                    };
+                    if cfg!(target_os = "macos") {
+                        // See https://github.com/rust-windowing/winit/issues/1695 for more info.
+                        delta.x *= -1.0;
+                    }
+
+                    // The ctrl (cmd on macos) key indicates a zoom is desired.
+                    if self.raw_input.modifiers.ctrl || self.raw_input.modifiers.command {
+                        self.raw_input.zoom_delta *= (delta.y / 200.0).exp();
+                    } else {
+                        self.raw_input.scroll_delta += delta;
                     }
                 }
                 CursorMoved { position, .. } => {
