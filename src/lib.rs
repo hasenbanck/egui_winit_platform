@@ -16,6 +16,7 @@ use winit::dpi::PhysicalSize;
 use winit::event::VirtualKeyCode::*;
 use winit::event::WindowEvent::*;
 use winit::event::{Event, ModifiersState, VirtualKeyCode};
+use winit::window::Window;
 
 /// Configures the creation of the `Platform`.
 #[derive(Debug, Default)]
@@ -262,10 +263,17 @@ impl Platform {
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
-    pub fn end_frame(&mut self) -> (egui::Output, Vec<ClippedShape>) {
+    pub fn end_frame(&mut self, window: &Window) -> (egui::Output, Vec<ClippedShape>) {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
         let parts = self.context.end_frame();
+
+        if let Some(cursor_icon) = egui_to_winit_cursor_icon(parts.0.cursor_icon) {
+            window.set_cursor_visible(true);
+            window.set_cursor_icon(cursor_icon);
+        } else {
+            window.set_cursor_visible(false);
+        }
 
         #[cfg(feature = "clipboard")]
         handle_clipboard(&parts.0, self.clipboard.as_mut());
@@ -329,6 +337,45 @@ fn winit_to_egui_modifiers(modifiers: ModifiersState) -> egui::Modifiers {
         mac_cmd: false,
         #[cfg(not(target_os = "macos"))]
         command: modifiers.ctrl(),
+    }
+}
+
+#[inline]
+fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<winit::window::CursorIcon> {
+    use egui::CursorIcon::*;
+    use winit::window::CursorIcon;
+
+    if icon == None {
+        Option::None
+    } else {
+        match icon {
+            Default => CursorIcon::Default,
+            ContextMenu => CursorIcon::ContextMenu,
+            Help => CursorIcon::Help,
+            PointingHand => CursorIcon::Hand,
+            Progress => CursorIcon::Progress,
+            Wait => CursorIcon::Wait,
+            Cell => CursorIcon::Cell,
+            Crosshair => CursorIcon::Crosshair,
+            Text => CursorIcon::Text,
+            VerticalText => CursorIcon::VerticalText,
+            Alias => CursorIcon::Alias,
+            Copy => CursorIcon::Copy,
+            Move => CursorIcon::Move,
+            NoDrop => CursorIcon::NoDrop,
+            NotAllowed => CursorIcon::NotAllowed,
+            Grab => CursorIcon::Grab,
+            Grabbing => CursorIcon::Grabbing,
+            AllScroll => CursorIcon::AllScroll,
+            ResizeHorizontal => CursorIcon::EwResize,
+            ResizeNeSw => CursorIcon::NeswResize,
+            ResizeNwSe => CursorIcon::NwseResize,
+            ResizeVertical => CursorIcon::NsResize,
+            ZoomIn => CursorIcon::ZoomIn,
+            ZoomOut => CursorIcon::ZoomOut,
+            None => unreachable!(),
+        }
+        .into()
     }
 }
 
