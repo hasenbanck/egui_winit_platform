@@ -9,13 +9,14 @@
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{
     math::{pos2, vec2},
-    CtxRef,
+    paint::ClippedShape,
+    CtxRef, Key, Pos2,
 };
-use egui::{paint::ClippedShape, Key};
-use winit::dpi::PhysicalSize;
-use winit::event::VirtualKeyCode::*;
-use winit::event::WindowEvent::*;
-use winit::event::{Event, ModifiersState, VirtualKeyCode};
+use winit::{
+    dpi::PhysicalSize,
+    event::{Event, ModifiersState, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*},
+    window::CursorIcon,
+};
 
 /// Configures the creation of the `Platform`.
 #[derive(Debug, Default)]
@@ -76,7 +77,7 @@ impl Platform {
         let raw_input = egui::RawInput {
             pixels_per_point: Some(descriptor.scale_factor as f32),
             screen_rect: Some(egui::Rect::from_min_size(
-                Default::default(),
+                Pos2::default(),
                 vec2(
                     descriptor.physical_width as f32,
                     descriptor.physical_height as f32,
@@ -90,7 +91,7 @@ impl Platform {
             context,
             raw_input,
             modifier_state: winit::event::ModifiersState::empty(),
-            pointer_pos: Default::default(),
+            pointer_pos: Pos2::default(),
             #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
         }
@@ -261,11 +262,25 @@ impl Platform {
         self.context.begin_frame(self.raw_input.take());
     }
 
-    /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions as `PaintJobs`.
-    pub fn end_frame(&mut self) -> (egui::Output, Vec<ClippedShape>) {
+    /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions
+    /// as `PaintJobs`. If the optional `window` is set, it will set the cursor key based on
+    /// egui's instructions.
+    pub fn end_frame(
+        &mut self,
+        window: Option<&winit::window::Window>,
+    ) -> (egui::Output, Vec<ClippedShape>) {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
         let parts = self.context.end_frame();
+
+        if let Some(window) = window {
+            if let Some(cursor_icon) = egui_to_winit_cursor_icon(parts.0.cursor_icon) {
+                window.set_cursor_visible(true);
+                window.set_cursor_icon(cursor_icon);
+            } else {
+                window.set_cursor_visible(false);
+            }
+        }
 
         #[cfg(feature = "clipboard")]
         handle_clipboard(&parts.0, self.clipboard.as_mut());
@@ -329,6 +344,39 @@ fn winit_to_egui_modifiers(modifiers: ModifiersState) -> egui::Modifiers {
         mac_cmd: false,
         #[cfg(not(target_os = "macos"))]
         command: modifiers.ctrl(),
+    }
+}
+
+#[inline]
+fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<winit::window::CursorIcon> {
+    use egui::CursorIcon::*;
+
+    match icon {
+        Default => Some(CursorIcon::Default),
+        ContextMenu => Some(CursorIcon::ContextMenu),
+        Help => Some(CursorIcon::Help),
+        PointingHand => Some(CursorIcon::Hand),
+        Progress => Some(CursorIcon::Progress),
+        Wait => Some(CursorIcon::Wait),
+        Cell => Some(CursorIcon::Cell),
+        Crosshair => Some(CursorIcon::Crosshair),
+        Text => Some(CursorIcon::Text),
+        VerticalText => Some(CursorIcon::VerticalText),
+        Alias => Some(CursorIcon::Alias),
+        Copy => Some(CursorIcon::Copy),
+        Move => Some(CursorIcon::Move),
+        NoDrop => Some(CursorIcon::NoDrop),
+        NotAllowed => Some(CursorIcon::NotAllowed),
+        Grab => Some(CursorIcon::Grab),
+        Grabbing => Some(CursorIcon::Grabbing),
+        AllScroll => Some(CursorIcon::AllScroll),
+        ResizeHorizontal => Some(CursorIcon::EwResize),
+        ResizeNeSw => Some(CursorIcon::NeswResize),
+        ResizeNwSe => Some(CursorIcon::NwseResize),
+        ResizeVertical => Some(CursorIcon::NsResize),
+        ZoomIn => Some(CursorIcon::ZoomIn),
+        ZoomOut => Some(CursorIcon::ZoomOut),
+        None => Option::None,
     }
 }
 
