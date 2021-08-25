@@ -61,7 +61,7 @@ pub struct Platform {
     context: CtxRef,
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
-    pointer_pos: egui::Pos2,
+    pointer_pos: Option<egui::Pos2>,
 
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
@@ -91,7 +91,7 @@ impl Platform {
             context,
             raw_input,
             modifier_state: winit::event::ModifiersState::empty(),
-            pointer_pos: Pos2::default(),
+            pointer_pos: Some(Pos2::default()),
             #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
         }
@@ -134,17 +134,24 @@ impl Platform {
                 MouseInput { state, button, .. } => {
                     if let winit::event::MouseButton::Other(..) = button {
                     } else {
-                        self.raw_input.events.push(egui::Event::PointerButton {
-                            pos: self.pointer_pos,
-                            button: match button {
-                                winit::event::MouseButton::Left => egui::PointerButton::Primary,
-                                winit::event::MouseButton::Right => egui::PointerButton::Secondary,
-                                winit::event::MouseButton::Middle => egui::PointerButton::Middle,
-                                winit::event::MouseButton::Other(_) => unreachable!(),
-                            },
-                            pressed: *state == winit::event::ElementState::Pressed,
-                            modifiers: Default::default(),
-                        });
+                        // push event only if the cursor is inside the window
+                        if let Some(pointer_pos) = self.pointer_pos {
+                            self.raw_input.events.push(egui::Event::PointerButton {
+                                pos: pointer_pos,
+                                button: match button {
+                                    winit::event::MouseButton::Left => egui::PointerButton::Primary,
+                                    winit::event::MouseButton::Right => {
+                                        egui::PointerButton::Secondary
+                                    }
+                                    winit::event::MouseButton::Middle => {
+                                        egui::PointerButton::Middle
+                                    }
+                                    winit::event::MouseButton::Other(_) => unreachable!(),
+                                },
+                                pressed: *state == winit::event::ElementState::Pressed,
+                                modifiers: Default::default(),
+                            });
+                        }
                     }
                 }
                 MouseWheel { delta, .. } => {
@@ -170,15 +177,17 @@ impl Platform {
                     }
                 }
                 CursorMoved { position, .. } => {
-                    self.pointer_pos = pos2(
+                    let pointer_pos = pos2(
                         position.x as f32 / self.scale_factor as f32,
                         position.y as f32 / self.scale_factor as f32,
                     );
+                    self.pointer_pos = Some(pointer_pos);
                     self.raw_input
                         .events
-                        .push(egui::Event::PointerMoved(self.pointer_pos));
+                        .push(egui::Event::PointerMoved(pointer_pos));
                 }
                 CursorLeft { .. } => {
+                    self.pointer_pos = None;
                     self.raw_input.events.push(egui::Event::PointerGone);
                 }
                 ModifiersChanged(input) => {
@@ -276,7 +285,10 @@ impl Platform {
         if let Some(window) = window {
             if let Some(cursor_icon) = egui_to_winit_cursor_icon(parts.0.cursor_icon) {
                 window.set_cursor_visible(true);
-                window.set_cursor_icon(cursor_icon);
+                // if the pointer is located inside the window, set cursor icon
+                if self.pointer_pos.is_some() {
+                    window.set_cursor_icon(cursor_icon);
+                }
             } else {
                 window.set_cursor_visible(false);
             }
