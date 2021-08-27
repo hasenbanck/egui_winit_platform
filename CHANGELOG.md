@@ -6,7 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Updated
+
+## [0.10.0] - 2021-08-27
+### Updated
 - Target egui 0.14
+- Set cursor only if cursor is inside the window.
+- Add cursor icon support.
+- Disable default winit features.
+- Support zoom input.
+- Fix modifier state not being updated.
 
 ## [0.9.0] - 2021-06-25
 ### Updated
