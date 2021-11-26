@@ -197,26 +197,31 @@ impl Platform {
                 KeyboardInput { input, .. } => {
                     if let Some(virtual_keycode) = input.virtual_keycode {
                         let pressed = input.state == winit::event::ElementState::Pressed;
+                        let ctrl = self.modifier_state.ctrl();
 
-                        if pressed {
-                            let is_ctrl = self.modifier_state.ctrl();
-                            if is_ctrl && virtual_keycode == VirtualKeyCode::C {
+                        match (pressed, ctrl, virtual_keycode) {
+                            (true, true, VirtualKeyCode::C) => {
                                 self.raw_input.events.push(egui::Event::Copy)
-                            } else if is_ctrl && virtual_keycode == VirtualKeyCode::X {
+                            }
+                            (true, true, VirtualKeyCode::X) => {
                                 self.raw_input.events.push(egui::Event::Cut)
-                            } else if is_ctrl && virtual_keycode == VirtualKeyCode::V {
+                            }
+                            (true, true, VirtualKeyCode::V) => {
                                 #[cfg(feature = "clipboard")]
                                 if let Some(ref mut clipboard) = self.clipboard {
                                     if let Ok(contents) = clipboard.get_contents() {
                                         self.raw_input.events.push(egui::Event::Text(contents))
                                     }
                                 }
-                            } else if let Some(key) = winit_to_egui_key_code(virtual_keycode) {
-                                self.raw_input.events.push(egui::Event::Key {
-                                    key,
-                                    pressed: input.state == winit::event::ElementState::Pressed,
-                                    modifiers: winit_to_egui_modifiers(self.modifier_state),
-                                });
+                            }
+                            _ => {
+                                if let Some(key) = winit_to_egui_key_code(virtual_keycode) {
+                                    self.raw_input.events.push(egui::Event::Key {
+                                        key,
+                                        pressed,
+                                        modifiers: winit_to_egui_modifiers(self.modifier_state),
+                                    });
+                                }
                             }
                         }
                     }
