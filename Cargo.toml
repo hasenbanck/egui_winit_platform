@@ -11,7 +11,7 @@ readme = "README.md"
 
 [dependencies]
 egui = { version = "0.15", default-features = false, features = ["single_threaded"] }
-winit = { version = "0.25", default-features = false }
+winit = { version = "0.26", default-features = false }
 copypasta = { version = "0.7", optional = true }
 webbrowser = { version = "0.5", optional = true }
 
