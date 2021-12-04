@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Updated
 
+## [0.12.0] - 2021-12-04
+### Updated
+- Target winit 0.26
+- Fix key released event being ignored
+
 ## [0.11.0] - 2021-10-27
 ### Updated
 - Target egui 0.15
