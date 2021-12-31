@@ -8,8 +8,8 @@
 #[cfg(feature = "clipboard")]
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{
-    math::{pos2, vec2},
-    paint::ClippedShape,
+    emath::{pos2, vec2},
+    epaint::ClippedShape,
     CtxRef, Key, Pos2,
 };
 use winit::{
@@ -171,9 +171,11 @@ impl Platform {
 
                     // The ctrl (cmd on macos) key indicates a zoom is desired.
                     if self.raw_input.modifiers.ctrl || self.raw_input.modifiers.command {
-                        self.raw_input.zoom_delta *= (delta.y / 200.0).exp();
+                        self.raw_input
+                            .events
+                            .push(egui::Event::Zoom((delta.y / 200.0).exp()));
                     } else {
-                        self.raw_input.scroll_delta += delta;
+                        self.raw_input.events.push(egui::Event::Scroll(delta));
                     }
                 }
                 CursorMoved { position, .. } => {
