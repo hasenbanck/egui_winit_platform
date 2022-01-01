@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Updated
 
-## [0.13.0] - 2021-12-31
+## [0.13.0] - 2022-01-01
 ### Updated
 - Target egui 0.16
 
