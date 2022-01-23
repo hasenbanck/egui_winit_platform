@@ -314,6 +314,12 @@ impl Platform {
     pub fn context(&self) -> CtxRef {
         self.context.clone()
     }
+
+    /// Returns a mutable reference to the raw input that will be passed to egui
+    /// the next time [`Self::begin_frame`] is called
+    pub fn raw_input_mut(&mut self) -> &mut egui::RawInput {
+        &mut self.raw_input
+    }
 }
 
 /// Translates winit to egui keycodes.
