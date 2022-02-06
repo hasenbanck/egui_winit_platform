@@ -277,6 +277,8 @@ impl Platform {
 
                 CursorMoved { .. } => self.context().is_using_pointer(),
 
+                Touch { .. } => self.context().is_using_pointer(),
+
                 _ => false,
             },
 
