@@ -154,6 +154,22 @@ impl Platform {
                         }
                     }
                 }
+                Touch(touch) => {
+                    let pointer_pos = pos2(
+                        touch.location.x as f32 / self.scale_factor as f32,
+                        touch.location.y as f32 / self.scale_factor as f32,
+                    );
+
+                    self.raw_input.events.push(egui::Event::PointerButton {
+                        pos: pointer_pos,
+                        button: egui::PointerButton::Primary,
+                        pressed: match touch.phase {
+                            TouchPhase::Started => true,
+                            _ => false,
+                        },
+                        modifiers: Default::default(),
+                    });
+                }
                 MouseWheel { delta, .. } => {
                     let mut delta = match delta {
                         winit::event::MouseScrollDelta::LineDelta(x, y) => {
