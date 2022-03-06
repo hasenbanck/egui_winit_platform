@@ -10,7 +10,7 @@ use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{
     emath::{pos2, vec2},
     epaint::ClippedShape,
-    CtxRef, Key, Pos2,
+    Context, Key, Pos2,
 };
 use winit::{
     dpi::PhysicalSize,
@@ -34,7 +34,7 @@ pub struct PlatformDescriptor {
 }
 
 #[cfg(feature = "webbrowser")]
-fn handle_links(output: &egui::Output) {
+fn handle_links(output: &egui::PlatformOutput) {
     if let Some(open_url) = &output.open_url {
         // This does not handle open_url.new_tab
         // webbrowser does not support web anyway
@@ -45,7 +45,7 @@ fn handle_links(output: &egui::Output) {
 }
 
 #[cfg(feature = "clipboard")]
-fn handle_clipboard(output: &egui::Output, clipboard: Option<&mut ClipboardContext>) {
+fn handle_clipboard(output: &egui::PlatformOutput, clipboard: Option<&mut ClipboardContext>) {
     if !output.copied_text.is_empty() {
         if let Some(clipboard) = clipboard {
             if let Err(err) = clipboard.set_contents(output.copied_text.clone()) {
@@ -58,7 +58,7 @@ fn handle_clipboard(output: &egui::Output, clipboard: Option<&mut ClipboardConte
 /// Provides the integration between egui and winit.
 pub struct Platform {
     scale_factor: f64,
-    context: CtxRef,
+    context: Context,
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
     pointer_pos: Option<egui::Pos2>,
@@ -70,7 +70,7 @@ pub struct Platform {
 impl Platform {
     /// Creates a new `Platform`.
     pub fn new(descriptor: PlatformDescriptor) -> Self {
-        let context = CtxRef::default();
+        let context = Context::default();
 
         context.set_fonts(descriptor.font_definitions.clone());
         context.set_style(descriptor.style);
@@ -164,7 +164,7 @@ impl Platform {
                         pos: pointer_pos,
                         button: egui::PointerButton::Primary,
                         pressed: match touch.phase {
-                            TouchPhase::Started => true,
+                            winit::event::TouchPhase::Started => true,
                             _ => false,
                         },
                         modifiers: Default::default(),
@@ -302,13 +302,13 @@ impl Platform {
     pub fn end_frame(
         &mut self,
         window: Option<&winit::window::Window>,
-    ) -> (egui::Output, Vec<ClippedShape>) {
+    ) -> egui::FullOutput {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
-        let parts = self.context.end_frame();
+        let output = self.context.end_frame();
 
         if let Some(window) = window {
-            if let Some(cursor_icon) = egui_to_winit_cursor_icon(parts.0.cursor_icon) {
+            if let Some(cursor_icon) = egui_to_winit_cursor_icon(output.platform_output.cursor_icon) {
                 window.set_cursor_visible(true);
                 // if the pointer is located inside the window, set cursor icon
                 if self.pointer_pos.is_some() {
@@ -320,16 +320,16 @@ impl Platform {
         }
 
         #[cfg(feature = "clipboard")]
-        handle_clipboard(&parts.0, self.clipboard.as_mut());
+        handle_clipboard(&output.platform_output, self.clipboard.as_mut());
 
         #[cfg(feature = "webbrowser")]
-        handle_links(&parts.0);
+        handle_links(&output.platform_output);
 
-        parts
+        output
     }
 
     /// Returns the internal egui context.
-    pub fn context(&self) -> CtxRef {
+    pub fn context(&self) -> Context {
         self.context.clone()
     }
 
