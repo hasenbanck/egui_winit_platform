@@ -299,16 +299,14 @@ impl Platform {
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions
     /// as `PaintJobs`. If the optional `window` is set, it will set the cursor key based on
     /// egui's instructions.
-    pub fn end_frame(
-        &mut self,
-        window: Option<&winit::window::Window>,
-    ) -> egui::FullOutput {
+    pub fn end_frame(&mut self, window: Option<&winit::window::Window>) -> egui::FullOutput {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
         let output = self.context.end_frame();
 
         if let Some(window) = window {
-            if let Some(cursor_icon) = egui_to_winit_cursor_icon(output.platform_output.cursor_icon) {
+            if let Some(cursor_icon) = egui_to_winit_cursor_icon(output.platform_output.cursor_icon)
+            {
                 window.set_cursor_visible(true);
                 // if the pointer is located inside the window, set cursor icon
                 if self.pointer_pos.is_some() {
@@ -359,13 +357,42 @@ fn winit_to_egui_key_code(key: VirtualKeyCode) -> Option<egui::Key> {
         Return => Key::Enter,
         Tab => Key::Tab,
         Space => Key::Space,
-
+        Key1 => Key::Num1,
+        Key2 => Key::Num2,
+        Key3 => Key::Num3,
+        Key4 => Key::Num4,
+        Key5 => Key::Num5,
+        Key6 => Key::Num6,
+        Key7 => Key::Num7,
+        Key8 => Key::Num8,
+        Key9 => Key::Num9,
+        Key0 => Key::Num0,
         A => Key::A,
+        B => Key::B,
+        C => Key::C,
+        D => Key::D,
+        E => Key::E,
+        F => Key::F,
+        G => Key::G,
+        H => Key::H,
+        I => Key::I,
+        J => Key::J,
         K => Key::K,
+        L => Key::L,
+        M => Key::M,
+        N => Key::N,
+        O => Key::O,
+        P => Key::P,
+        Q => Key::Q,
+        R => Key::R,
+        S => Key::S,
+        T => Key::T,
         U => Key::U,
+        V => Key::V,
         W => Key::W,
+        X => Key::X,
+        Y => Key::Y,
         Z => Key::Z,
-
         _ => {
             return None;
         }
