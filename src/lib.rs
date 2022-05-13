@@ -5,6 +5,8 @@
 //! A basic usage example can be found [here](https://github.com/hasenbanck/egui_example).
 #![warn(missing_docs)]
 
+use std::collections::HashMap;
+
 #[cfg(feature = "clipboard")]
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{
@@ -14,7 +16,7 @@ use egui::{
 };
 use winit::{
     dpi::PhysicalSize,
-    event::{Event, ModifiersState, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*},
+    event::{Event, ModifiersState, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*, TouchPhase},
     window::CursorIcon,
 };
 
@@ -65,6 +67,15 @@ pub struct Platform {
 
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
+
+    // For emulating pointer events from touch events we merge multi-touch
+    // pointers, and ref-count the press state.
+    touch_pointer_pressed: u32,
+
+    // Egui requires unique u64 device IDs for touch events but Winit's
+    // device IDs are opaque, so we have to create our own ID mapping.
+    device_indices: HashMap<winit::event::DeviceId, u64>,
+    next_device_index: u64,
 }
 
 impl Platform {
@@ -94,6 +105,9 @@ impl Platform {
             pointer_pos: Some(Pos2::default()),
             #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
+            touch_pointer_pressed: 0,
+            device_indices: HashMap::new(),
+            next_device_index: 1,
         }
     }
 
@@ -160,15 +174,82 @@ impl Platform {
                         touch.location.y as f32 / self.scale_factor as f32,
                     );
 
-                    self.raw_input.events.push(egui::Event::PointerButton {
-                        pos: pointer_pos,
-                        button: egui::PointerButton::Primary,
-                        pressed: match touch.phase {
-                            winit::event::TouchPhase::Started => true,
-                            _ => false,
+                    let device_id = match self.device_indices.get(&touch.device_id) {
+                        Some(id) => *id,
+                        None => {
+                            let device_id = self.next_device_index;
+                            self.device_indices.insert(touch.device_id, device_id);
+                            self.next_device_index += 1;
+                            device_id
                         },
-                        modifiers: Default::default(),
+                    };
+                    let egui_phase = match touch.phase {
+                        TouchPhase::Started => egui::TouchPhase::Start,
+                        TouchPhase::Moved => egui::TouchPhase::Move,
+                        TouchPhase::Ended => egui::TouchPhase::End,
+                        TouchPhase::Cancelled => egui::TouchPhase::Cancel,
+                    };
+
+                    let force = match touch.force {
+                        Some(winit::event::Force::Calibrated { force, .. }) => force as f32,
+                        Some(winit::event::Force::Normalized(force)) => force as f32,
+                        None => 0.0f32 // hmmm, egui can't differentiate unsupported from zero pressure
+                    };
+
+                    self.raw_input.events.push(egui::Event::Touch {
+                        device_id: egui::TouchDeviceId(device_id),
+                        id: egui::TouchId(touch.id),
+                        phase: egui_phase,
+                        pos: pointer_pos,
+                        force
                     });
+
+                    // Currently Winit doesn't emulate pointer events based on
+                    // touch events but Egui requires pointer emulation.
+                    //
+                    // For simplicity we just merge all touch pointers into a
+                    // single virtual pointer and ref-count the press state
+                    // (i.e. the pointer will remain pressed during multi-touch
+                    // events until the last pointer is lifted up)
+
+                    let was_pressed = self.touch_pointer_pressed > 0;
+
+                    match touch.phase {
+                        TouchPhase::Started => {
+                            self.touch_pointer_pressed += 1;
+                        },
+                        TouchPhase::Ended | TouchPhase::Cancelled => {
+                            self.touch_pointer_pressed = match self.touch_pointer_pressed.checked_sub(1) {
+                                Some(count) => count,
+                                None => {
+                                    eprintln!("Pointer emulation error: Unbalanced touch start/stop events from Winit");
+                                    0
+                                }
+                            };
+                        },
+                        TouchPhase::Moved => {
+                            self.raw_input.events.push(egui::Event::PointerMoved(pointer_pos));
+                        }
+                    }
+
+                    if was_pressed == false && self.touch_pointer_pressed > 0 {
+                        self.raw_input.events.push(egui::Event::PointerButton {
+                            pos: pointer_pos,
+                            button: egui::PointerButton::Primary,
+                            pressed: true,
+                            modifiers: Default::default(),
+                        });
+                    } else if was_pressed == true && self.touch_pointer_pressed == 0 {
+                        // Egui docs say that the pressed=false should be sent _before_
+                        // the PointerGone.
+                        self.raw_input.events.push(egui::Event::PointerButton {
+                            pos: pointer_pos,
+                            button: egui::PointerButton::Primary,
+                            pressed: false,
+                            modifiers: Default::default(),
+                        });
+                        self.raw_input.events.push(egui::Event::PointerGone);
+                    }
                 }
                 MouseWheel { delta, .. } => {
                     let mut delta = match delta {
