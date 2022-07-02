@@ -16,7 +16,7 @@ use egui::{
 };
 use winit::{
     dpi::PhysicalSize,
-    event::{Event, ModifiersState, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*, TouchPhase},
+    event::{Event, ModifiersState, TouchPhase, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*},
     window::CursorIcon,
 };
 
@@ -181,7 +181,7 @@ impl Platform {
                             self.device_indices.insert(touch.device_id, device_id);
                             self.next_device_index += 1;
                             device_id
-                        },
+                        }
                     };
                     let egui_phase = match touch.phase {
                         TouchPhase::Started => egui::TouchPhase::Start,
@@ -193,7 +193,7 @@ impl Platform {
                     let force = match touch.force {
                         Some(winit::event::Force::Calibrated { force, .. }) => force as f32,
                         Some(winit::event::Force::Normalized(force)) => force as f32,
-                        None => 0.0f32 // hmmm, egui can't differentiate unsupported from zero pressure
+                        None => 0.0f32, // hmmm, egui can't differentiate unsupported from zero pressure
                     };
 
                     self.raw_input.events.push(egui::Event::Touch {
@@ -201,7 +201,7 @@ impl Platform {
                         id: egui::TouchId(touch.id),
                         phase: egui_phase,
                         pos: pointer_pos,
-                        force
+                        force,
                     });
 
                     // Currently Winit doesn't emulate pointer events based on
@@ -217,18 +217,23 @@ impl Platform {
                     match touch.phase {
                         TouchPhase::Started => {
                             self.touch_pointer_pressed += 1;
-                        },
+                        }
                         TouchPhase::Ended | TouchPhase::Cancelled => {
-                            self.touch_pointer_pressed = match self.touch_pointer_pressed.checked_sub(1) {
+                            self.touch_pointer_pressed = match self
+                                .touch_pointer_pressed
+                                .checked_sub(1)
+                            {
                                 Some(count) => count,
                                 None => {
                                     eprintln!("Pointer emulation error: Unbalanced touch start/stop events from Winit");
                                     0
                                 }
                             };
-                        },
+                        }
                         TouchPhase::Moved => {
-                            self.raw_input.events.push(egui::Event::PointerMoved(pointer_pos));
+                            self.raw_input
+                                .events
+                                .push(egui::Event::PointerMoved(pointer_pos));
                         }
                     }
 
@@ -528,6 +533,7 @@ fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<winit::window::Cu
         ZoomIn => Some(CursorIcon::ZoomIn),
         ZoomOut => Some(CursorIcon::ZoomOut),
         None => Option::None,
+        _ => Option::None,
     }
 }
 
