@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use egui::{
     emath::{pos2, vec2},
-    epaint::ClippedShape,
     Context, Key, Pos2,
 };
 use winit::{
@@ -530,10 +529,19 @@ fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<winit::window::Cu
         ResizeNeSw => Some(CursorIcon::NeswResize),
         ResizeNwSe => Some(CursorIcon::NwseResize),
         ResizeVertical => Some(CursorIcon::NsResize),
+        ResizeEast => Some(CursorIcon::EResize),
+        ResizeSouthEast => Some(CursorIcon::SeResize),
+        ResizeSouth => Some(CursorIcon::SResize),
+        ResizeSouthWest => Some(CursorIcon::SwResize),
+        ResizeWest => Some(CursorIcon::WResize),
+        ResizeNorthWest => Some(CursorIcon::NwResize),
+        ResizeNorth => Some(CursorIcon::NResize),
+        ResizeNorthEast => Some(CursorIcon::NeResize),
+        ResizeColumn => Some(CursorIcon::ColResize),
+        ResizeRow => Some(CursorIcon::RowResize),
         ZoomIn => Some(CursorIcon::ZoomIn),
         ZoomOut => Some(CursorIcon::ZoomOut),
         None => Option::None,
-        _ => Option::None,
     }
 }
 
