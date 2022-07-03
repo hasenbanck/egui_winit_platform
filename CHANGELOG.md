@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Updated
 
+## [0.15.0] - 2022-07-03
+### Updated
+- Target egui 0.18
+- Emulate pointer events from touch events
+- Provide full mapping for egui key presses
+
 ## [0.14.0] - 2022-03-09
 ### Updated
 - Target egui 0.17
