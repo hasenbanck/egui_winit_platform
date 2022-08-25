@@ -236,14 +236,14 @@ impl Platform {
                         }
                     }
 
-                    if was_pressed == false && self.touch_pointer_pressed > 0 {
+                    if !was_pressed && self.touch_pointer_pressed > 0 {
                         self.raw_input.events.push(egui::Event::PointerButton {
                             pos: pointer_pos,
                             button: egui::PointerButton::Primary,
                             pressed: true,
                             modifiers: Default::default(),
                         });
-                    } else if was_pressed == true && self.touch_pointer_pressed == 0 {
+                    } else if was_pressed && self.touch_pointer_pressed == 0 {
                         // Egui docs say that the pressed=false should be sent _before_
                         // the PointerGone.
                         self.raw_input.events.push(egui::Event::PointerButton {
@@ -548,9 +548,9 @@ fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<winit::window::Cu
 /// We only want printable characters and ignore all special keys.
 #[inline]
 fn is_printable(chr: char) -> bool {
-    let is_in_private_use_area = '\u{e000}' <= chr && chr <= '\u{f8ff}'
-        || '\u{f0000}' <= chr && chr <= '\u{ffffd}'
-        || '\u{100000}' <= chr && chr <= '\u{10fffd}';
+    let is_in_private_use_area = ('\u{e000}'..='\u{f8ff}').contains(&chr)
+        || ('\u{f0000}'..='\u{ffffd}').contains(&chr)
+        || ('\u{100000}'..='\u{10fffd}').contains(&chr);
 
     !is_in_private_use_area && !chr.is_ascii_control()
 }
