@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Updated
+- Target egui 0.19
+- Target winit 0.26
+- Target copypasta 0.8
+- Target webbrowser 0.7
 
 ## [0.15.0] - 2022-07-03
 ### Updated
