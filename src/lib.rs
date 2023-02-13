@@ -323,6 +323,7 @@ impl Platform {
                                         key,
                                         pressed,
                                         modifiers: winit_to_egui_modifiers(self.modifier_state),
+                                        repeat: false,
                                     });
                                 }
                             }
