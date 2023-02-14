@@ -1,6 +1,6 @@
 [package]
 name = "egui_winit_platform"
-version = "0.17.0"
+version = "0.18.0"
 authors = ["Nils Hasenbanck <nils@hasenbanck.de>"]
 edition = "2018"
 description = "Platform code to use egui with winit."
