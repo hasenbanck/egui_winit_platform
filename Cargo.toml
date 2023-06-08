@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 
 [dependencies]
-egui = { version = "0.21", default-features = false }
+egui = { version = "0.22", default-features = false }
 winit = { version = "0.28" }
 copypasta = { version = "0.8", optional = true }
 webbrowser = { version = "0.8", optional = true }
