@@ -200,7 +200,7 @@ impl Platform {
                         id: egui::TouchId(touch.id),
                         phase: egui_phase,
                         pos: pointer_pos,
-                        force,
+                        force: Some(force),
                     });
 
                     // Currently Winit doesn't emulate pointer events based on
