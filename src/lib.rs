@@ -9,15 +9,14 @@ use std::collections::HashMap;
 
 #[cfg(feature = "clipboard")]
 use copypasta::{ClipboardContext, ClipboardProvider};
-use egui::{
-    emath::{pos2, vec2},
-    Context, Key, Pos2,
-};
+use egui::{Context, emath::{pos2, vec2}, Key, Pos2};
 use winit::{
     dpi::PhysicalSize,
-    event::{Event, ModifiersState, TouchPhase, VirtualKeyCode, VirtualKeyCode::*, WindowEvent::*},
+    event::{Event, TouchPhase, WindowEvent::*},
     window::CursorIcon,
 };
+use winit::event::MouseButton;
+use winit::keyboard::{ModifiersState, NamedKey};
 
 /// Configures the creation of the `Platform`.
 #[derive(Debug, Default)]
@@ -62,7 +61,7 @@ pub struct Platform {
     context: Context,
     raw_input: egui::RawInput,
     modifier_state: ModifiersState,
-    pointer_pos: Option<egui::Pos2>,
+    pointer_pos: Option<Pos2>,
 
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
@@ -85,7 +84,6 @@ impl Platform {
         context.set_fonts(descriptor.font_definitions.clone());
         context.set_style(descriptor.style);
         let raw_input = egui::RawInput {
-            pixels_per_point: Some(descriptor.scale_factor as f32),
             screen_rect: Some(egui::Rect::from_min_size(
                 Pos2::default(),
                 vec2(
@@ -100,7 +98,7 @@ impl Platform {
             scale_factor: descriptor.scale_factor,
             context,
             raw_input,
-            modifier_state: winit::event::ModifiersState::empty(),
+            modifier_state: ModifiersState::empty(),
             pointer_pos: Some(Pos2::default()),
             #[cfg(feature = "clipboard")]
             clipboard: ClipboardContext::new().ok(),
@@ -122,9 +120,9 @@ impl Platform {
                 // There is nothing to do for minimize events, so it is ignored here. This solves an issue where
                 // egui window positions would be changed when minimizing on Windows.
                 Resized(PhysicalSize {
-                    width: 0,
-                    height: 0,
-                }) => {}
+                            width: 0,
+                            height: 0,
+                        }) => {}
                 Resized(physical_size) => {
                     self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
                         Default::default(),
@@ -134,33 +132,22 @@ impl Platform {
                 }
                 ScaleFactorChanged {
                     scale_factor,
-                    new_inner_size,
+                    ..
                 } => {
                     self.scale_factor = *scale_factor;
-                    self.raw_input.pixels_per_point = Some(*scale_factor as f32);
-                    self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
-                        Default::default(),
-                        vec2(new_inner_size.width as f32, new_inner_size.height as f32)
-                            / self.scale_factor as f32,
-                    ));
                 }
                 MouseInput { state, button, .. } => {
-                    if let winit::event::MouseButton::Other(..) = button {
-                    } else {
+                    if let Some(button) = match button {
+                        MouseButton::Left => Some(egui::PointerButton::Primary),
+                        MouseButton::Right => Some(egui::PointerButton::Secondary),
+                        MouseButton::Middle => Some(egui::PointerButton::Middle),
+                        _ => None
+                    } {
                         // push event only if the cursor is inside the window
                         if let Some(pointer_pos) = self.pointer_pos {
                             self.raw_input.events.push(egui::Event::PointerButton {
                                 pos: pointer_pos,
-                                button: match button {
-                                    winit::event::MouseButton::Left => egui::PointerButton::Primary,
-                                    winit::event::MouseButton::Right => {
-                                        egui::PointerButton::Secondary
-                                    }
-                                    winit::event::MouseButton::Middle => {
-                                        egui::PointerButton::Middle
-                                    }
-                                    winit::event::MouseButton::Other(_) => unreachable!(),
-                                },
+                                button,
                                 pressed: *state == winit::event::ElementState::Pressed,
                                 modifiers: Default::default(),
                             });
@@ -218,16 +205,12 @@ impl Platform {
                             self.touch_pointer_pressed += 1;
                         }
                         TouchPhase::Ended | TouchPhase::Cancelled => {
-                            self.touch_pointer_pressed = match self
+                            self.touch_pointer_pressed = self
                                 .touch_pointer_pressed
-                                .checked_sub(1)
-                            {
-                                Some(count) => count,
-                                None => {
-                                    eprintln!("Pointer emulation error: Unbalanced touch start/stop events from Winit");
-                                    0
-                                }
-                            };
+                                .checked_sub(1).unwrap_or_else(|| {
+                                eprintln!("Pointer emulation error: Unbalanced touch start/stop events from Winit");
+                                0
+                            });
                         }
                         TouchPhase::Moved => {
                             self.raw_input
@@ -294,22 +277,32 @@ impl Platform {
                     self.raw_input.events.push(egui::Event::PointerGone);
                 }
                 ModifiersChanged(input) => {
-                    self.modifier_state = *input;
-                    self.raw_input.modifiers = winit_to_egui_modifiers(*input);
+                    self.modifier_state = input.state();
+                    self.raw_input.modifiers = winit_to_egui_modifiers(input.state());
                 }
-                KeyboardInput { input, .. } => {
-                    if let Some(virtual_keycode) = input.virtual_keycode {
-                        let pressed = input.state == winit::event::ElementState::Pressed;
-                        let ctrl = self.modifier_state.ctrl();
+                KeyboardInput { event, .. } => {
+                    let key = &event.logical_key;
+                    let pressed = event.state == winit::event::ElementState::Pressed;
+                    let ctrl = self.modifier_state.control_key();
 
-                        match (pressed, ctrl, virtual_keycode) {
-                            (true, true, VirtualKeyCode::C) => {
+                    if !self.modifier_state.intersects(ModifiersState::CONTROL | ModifiersState::SUPER)
+                    {
+                        if let Some(ch) = &event.text {
+                            let str: String = ch.chars().filter(|c| is_printable(*c)).collect();
+                            if !str.is_empty() {
+                                self.raw_input.events.push(egui::Event::Text(str));
+                            }
+                        }
+                    }
+                    if let Some(key) = winit_to_egui_key_code(key) {
+                        match (pressed, ctrl, key) {
+                            (true, true, Key::C) => {
                                 self.raw_input.events.push(egui::Event::Copy)
                             }
-                            (true, true, VirtualKeyCode::X) => {
+                            (true, true, Key::X) => {
                                 self.raw_input.events.push(egui::Event::Cut)
                             }
-                            (true, true, VirtualKeyCode::V) => {
+                            (true, true, Key::V) => {
                                 #[cfg(feature = "clipboard")]
                                 if let Some(ref mut clipboard) = self.clipboard {
                                     if let Ok(contents) = clipboard.get_contents() {
@@ -318,26 +311,15 @@ impl Platform {
                                 }
                             }
                             _ => {
-                                if let Some(key) = winit_to_egui_key_code(virtual_keycode) {
-                                    self.raw_input.events.push(egui::Event::Key {
-                                        key,
-                                        pressed,
-                                        modifiers: winit_to_egui_modifiers(self.modifier_state),
-                                        repeat: false,
-                                    });
-                                }
+                                self.raw_input.events.push(egui::Event::Key {
+                                    key,
+                                    physical_key: None,
+                                    pressed,
+                                    modifiers: winit_to_egui_modifiers(self.modifier_state),
+                                    repeat: false,
+                                });
                             }
                         }
-                    }
-                }
-                ReceivedCharacter(ch) => {
-                    if is_printable(*ch)
-                        && !self.modifier_state.ctrl()
-                        && !self.modifier_state.logo()
-                    {
-                        self.raw_input
-                            .events
-                            .push(egui::Event::Text(ch.to_string()));
                     }
                 }
                 _ => {}
@@ -355,7 +337,7 @@ impl Platform {
                 window_id: _window_id,
                 event,
             } => match event {
-                ReceivedCharacter(_) | KeyboardInput { .. } | ModifiersChanged(_) => {
+                KeyboardInput { .. } | ModifiersChanged(_) => {
                     self.context().wants_keyboard_input()
                 }
 
@@ -388,7 +370,7 @@ impl Platform {
     pub fn end_frame(&mut self, window: Option<&winit::window::Window>) -> egui::FullOutput {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
-        let output = self.context.end_frame();
+            let output = self.context.end_frame();
 
         if let Some(window) = window {
             if let Some(cursor_icon) = egui_to_winit_cursor_icon(output.platform_output.cursor_icon)
@@ -426,59 +408,44 @@ impl Platform {
 
 /// Translates winit to egui keycodes.
 #[inline]
-fn winit_to_egui_key_code(key: VirtualKeyCode) -> Option<egui::Key> {
+fn winit_to_egui_key_code(key: &winit::keyboard::Key) -> Option<Key> {
     Some(match key {
-        Escape => Key::Escape,
-        Insert => Key::Insert,
-        Home => Key::Home,
-        Delete => Key::Delete,
-        End => Key::End,
-        PageDown => Key::PageDown,
-        PageUp => Key::PageUp,
-        Left => Key::ArrowLeft,
-        Up => Key::ArrowUp,
-        Right => Key::ArrowRight,
-        Down => Key::ArrowDown,
-        Back => Key::Backspace,
-        Return => Key::Enter,
-        Tab => Key::Tab,
-        Space => Key::Space,
-        Key1 => Key::Num1,
-        Key2 => Key::Num2,
-        Key3 => Key::Num3,
-        Key4 => Key::Num4,
-        Key5 => Key::Num5,
-        Key6 => Key::Num6,
-        Key7 => Key::Num7,
-        Key8 => Key::Num8,
-        Key9 => Key::Num9,
-        Key0 => Key::Num0,
-        A => Key::A,
-        B => Key::B,
-        C => Key::C,
-        D => Key::D,
-        E => Key::E,
-        F => Key::F,
-        G => Key::G,
-        H => Key::H,
-        I => Key::I,
-        J => Key::J,
-        K => Key::K,
-        L => Key::L,
-        M => Key::M,
-        N => Key::N,
-        O => Key::O,
-        P => Key::P,
-        Q => Key::Q,
-        R => Key::R,
-        S => Key::S,
-        T => Key::T,
-        U => Key::U,
-        V => Key::V,
-        W => Key::W,
-        X => Key::X,
-        Y => Key::Y,
-        Z => Key::Z,
+        winit::keyboard::Key::Named(NamedKey::Escape) => Key::Escape,
+        winit::keyboard::Key::Named(NamedKey::Insert) => Key::Insert,
+        winit::keyboard::Key::Named(NamedKey::Home) => Key::Home,
+        winit::keyboard::Key::Named(NamedKey::Delete) => Key::Delete,
+        winit::keyboard::Key::Named(NamedKey::End) => Key::End,
+        winit::keyboard::Key::Named(NamedKey::PageDown) => Key::PageDown,
+        winit::keyboard::Key::Named(NamedKey::PageUp) => Key::PageUp,
+        winit::keyboard::Key::Named(NamedKey::ArrowLeft) => Key::ArrowLeft,
+        winit::keyboard::Key::Named(NamedKey::ArrowUp) => Key::ArrowUp,
+        winit::keyboard::Key::Named(NamedKey::ArrowRight) => Key::ArrowRight,
+        winit::keyboard::Key::Named(NamedKey::ArrowDown) => Key::ArrowDown,
+        winit::keyboard::Key::Named(NamedKey::Backspace) => Key::Backspace,
+        winit::keyboard::Key::Named(NamedKey::Enter) => Key::Enter,
+        winit::keyboard::Key::Named(NamedKey::Tab) => Key::Tab,
+        winit::keyboard::Key::Named(NamedKey::Space) => Key::Space,
+        winit::keyboard::Key::Named(NamedKey::F1) => Key::F1,
+        winit::keyboard::Key::Named(NamedKey::F2) => Key::F2,
+        winit::keyboard::Key::Named(NamedKey::F3) => Key::F3,
+        winit::keyboard::Key::Named(NamedKey::F4) => Key::F4,
+        winit::keyboard::Key::Named(NamedKey::F5) => Key::F5,
+        winit::keyboard::Key::Named(NamedKey::F6) => Key::F6,
+        winit::keyboard::Key::Named(NamedKey::F7) => Key::F7,
+        winit::keyboard::Key::Named(NamedKey::F8) => Key::F8,
+        winit::keyboard::Key::Named(NamedKey::F9) => Key::F9,
+        winit::keyboard::Key::Named(NamedKey::F10) => Key::F10,
+        winit::keyboard::Key::Named(NamedKey::F11) => Key::F11,
+        winit::keyboard::Key::Named(NamedKey::F12) => Key::F12,
+        winit::keyboard::Key::Named(NamedKey::F13) => Key::F13,
+        winit::keyboard::Key::Named(NamedKey::F14) => Key::F14,
+        winit::keyboard::Key::Named(NamedKey::F15) => Key::F15,
+        winit::keyboard::Key::Named(NamedKey::F16) => Key::F16,
+        winit::keyboard::Key::Named(NamedKey::F17) => Key::F17,
+        winit::keyboard::Key::Named(NamedKey::F18) => Key::F18,
+        winit::keyboard::Key::Named(NamedKey::F19) => Key::F19,
+        winit::keyboard::Key::Named(NamedKey::F20) => Key::F20,
+        winit::keyboard::Key::Character(c) => Key::from_name(&c)?,
         _ => {
             return None;
         }
@@ -489,29 +456,29 @@ fn winit_to_egui_key_code(key: VirtualKeyCode) -> Option<egui::Key> {
 #[inline]
 fn winit_to_egui_modifiers(modifiers: ModifiersState) -> egui::Modifiers {
     egui::Modifiers {
-        alt: modifiers.alt(),
-        ctrl: modifiers.ctrl(),
-        shift: modifiers.shift(),
+        alt: modifiers.alt_key(),
+        ctrl: modifiers.control_key(),
+        shift: modifiers.shift_key(),
         #[cfg(target_os = "macos")]
-        mac_cmd: modifiers.logo(),
+        mac_cmd: modifiers.super_key(),
         #[cfg(target_os = "macos")]
-        command: modifiers.logo(),
+        command: modifiers.super_key(),
         #[cfg(not(target_os = "macos"))]
         mac_cmd: false,
         #[cfg(not(target_os = "macos"))]
-        command: modifiers.ctrl(),
+        command: modifiers.super_key(),
     }
 }
 
 #[inline]
-fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<winit::window::CursorIcon> {
+fn egui_to_winit_cursor_icon(icon: egui::CursorIcon) -> Option<CursorIcon> {
     use egui::CursorIcon::*;
 
     match icon {
         Default => Some(CursorIcon::Default),
         ContextMenu => Some(CursorIcon::ContextMenu),
         Help => Some(CursorIcon::Help),
-        PointingHand => Some(CursorIcon::Hand),
+        PointingHand => Some(CursorIcon::Pointer),
         Progress => Some(CursorIcon::Progress),
         Wait => Some(CursorIcon::Wait),
         Cell => Some(CursorIcon::Cell),
