@@ -285,7 +285,7 @@ impl Platform {
                     let pressed = event.state == winit::event::ElementState::Pressed;
                     let ctrl = self.modifier_state.control_key();
 
-                    if !self.modifier_state.intersects(ModifiersState::CONTROL | ModifiersState::SUPER)
+                    if pressed && !self.modifier_state.intersects(ModifiersState::CONTROL | ModifiersState::SUPER)
                     {
                         if let Some(ch) = &event.text {
                             let str: String = ch.chars().filter(|c| is_printable(*c)).collect();
