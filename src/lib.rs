@@ -9,14 +9,20 @@ use std::collections::HashMap;
 
 #[cfg(feature = "clipboard")]
 use copypasta::{ClipboardContext, ClipboardProvider};
-use egui::{emath::{pos2, vec2}, Context, Key, MouseWheelUnit, Pos2};
-use winit::{
-    dpi::PhysicalSize,
-    event::{TouchPhase, WindowEvent::{self, *}},
-    window::CursorIcon,
+use egui::{
+    emath::{pos2, vec2},
+    Context, Key, MouseWheelUnit, Pos2,
 };
 use winit::event::MouseButton;
 use winit::keyboard::{ModifiersState, NamedKey};
+use winit::{
+    dpi::PhysicalSize,
+    event::{
+        TouchPhase,
+        WindowEvent::{self, *},
+    },
+    window::CursorIcon,
+};
 
 /// Configures the creation of the `Platform`.
 #[derive(Debug, Default)]
@@ -116,9 +122,9 @@ impl Platform {
             // There is nothing to do for minimize events, so it is ignored here. This solves an issue where
             // egui window positions would be changed when minimizing on Windows.
             Resized(PhysicalSize {
-                        width: 0,
-                        height: 0,
-                    }) => {}
+                width: 0,
+                height: 0,
+            }) => {}
             Resized(physical_size) => {
                 self.raw_input.screen_rect = Some(egui::Rect::from_min_size(
                     Default::default(),
@@ -126,10 +132,7 @@ impl Platform {
                         / self.scale_factor as f32,
                 ));
             }
-            ScaleFactorChanged {
-                scale_factor,
-                ..
-            } => {
+            ScaleFactorChanged { scale_factor, .. } => {
                 self.scale_factor = *scale_factor;
             }
             MouseInput { state, button, .. } => {
@@ -137,7 +140,7 @@ impl Platform {
                     MouseButton::Left => Some(egui::PointerButton::Primary),
                     MouseButton::Right => Some(egui::PointerButton::Secondary),
                     MouseButton::Middle => Some(egui::PointerButton::Middle),
-                    _ => None
+                    _ => None,
                 } {
                     // push event only if the cursor is inside the window
                     if let Some(pointer_pos) = self.pointer_pos {
@@ -278,7 +281,10 @@ impl Platform {
                 let pressed = event.state == winit::event::ElementState::Pressed;
                 let ctrl = self.modifier_state.control_key();
 
-                if pressed && !self.modifier_state.intersects(ModifiersState::CONTROL | ModifiersState::SUPER)
+                if pressed
+                    && !self
+                        .modifier_state
+                        .intersects(ModifiersState::CONTROL | ModifiersState::SUPER)
                 {
                     if let Some(ch) = &event.text {
                         let str: String = ch.chars().filter(|c| is_printable(*c)).collect();
@@ -289,13 +295,10 @@ impl Platform {
                 }
                 if let Some(key) = winit_to_egui_key_code(key) {
                     match (pressed, ctrl, key) {
-                        (true, true, Key::C) => {
-                            self.raw_input.events.push(egui::Event::Copy)
-                        }
-                        (true, true, Key::X) => {
-                            self.raw_input.events.push(egui::Event::Cut)
-                        }
-                        (true, true, Key::V) => {
+                        (true, true, Key::C) => self.raw_input.events.push(egui::Event::Copy),
+                        (true, true, Key::X) => self.raw_input.events.push(egui::Event::Cut),
+                        (true, true, Key::V) =>
+                        {
                             #[cfg(feature = "clipboard")]
                             if let Some(ref mut clipboard) = self.clipboard {
                                 if let Ok(contents) = clipboard.get_contents() {
@@ -323,9 +326,7 @@ impl Platform {
     /// avoid unexpected interactions, e.g. a mouse click registering "behind" the UI.
     pub fn captures_event(&self, event: &WindowEvent) -> bool {
         match event {
-            KeyboardInput { .. } | ModifiersChanged(_) => {
-                self.context().wants_keyboard_input()
-            }
+            KeyboardInput { .. } | ModifiersChanged(_) => self.context().wants_keyboard_input(),
 
             MouseWheel { .. } | MouseInput { .. } => self.context().wants_pointer_input(),
 
@@ -353,7 +354,7 @@ impl Platform {
     pub fn end_frame(&mut self, window: Option<&winit::window::Window>) -> egui::FullOutput {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
-            let output = self.context.end_frame();
+        let output = self.context.end_frame();
 
         if let Some(window) = window {
             if let Some(cursor_icon) = egui_to_winit_cursor_icon(output.platform_output.cursor_icon)
