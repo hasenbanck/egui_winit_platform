@@ -344,17 +344,17 @@ impl Platform {
     }
 
     /// Starts a new frame by providing a new `Ui` instance to write into.
-    pub fn begin_frame(&mut self) {
-        self.context.begin_frame(self.raw_input.take());
+    pub fn begin_pass(&mut self) {
+        self.context.begin_pass(self.raw_input.take());
     }
 
     /// Ends the frame. Returns what has happened as `Output` and gives you the draw instructions
     /// as `PaintJobs`. If the optional `window` is set, it will set the cursor key based on
     /// egui's instructions.
-    pub fn end_frame(&mut self, window: Option<&winit::window::Window>) -> egui::FullOutput {
+    pub fn end_pass(&mut self, window: Option<&winit::window::Window>) -> egui::FullOutput {
         // otherwise the below line gets flagged by clippy if both clipboard and webbrowser features are disabled
         #[allow(clippy::let_and_return)]
-        let output = self.context.end_frame();
+        let output = self.context.end_pass();
 
         if let Some(window) = window {
             if let Some(cursor_icon) = egui_to_winit_cursor_icon(output.platform_output.cursor_icon)
@@ -429,7 +429,7 @@ fn winit_to_egui_key_code(key: &winit::keyboard::Key) -> Option<Key> {
         winit::keyboard::Key::Named(NamedKey::F18) => Key::F18,
         winit::keyboard::Key::Named(NamedKey::F19) => Key::F19,
         winit::keyboard::Key::Named(NamedKey::F20) => Key::F20,
-        winit::keyboard::Key::Character(c) => Key::from_name(&c)?,
+        winit::keyboard::Key::Character(c) => Key::from_name(c)?,
         _ => {
             return None;
         }
