@@ -41,21 +41,25 @@ pub struct PlatformDescriptor {
 
 #[cfg(feature = "webbrowser")]
 fn handle_links(output: &egui::PlatformOutput) {
-    if let Some(open_url) = &output.open_url {
-        // This does not handle open_url.new_tab
-        // webbrowser does not support web anyway
-        if let Err(err) = webbrowser::open(&open_url.url) {
-            eprintln!("Failed to open url: {}", err);
+    for command in &output.commands {
+        if let egui::OutputCommand::OpenUrl(open_url) = command {
+            // This does not handle open_url.new_tab
+            // webbrowser does not support web anyway
+            if let Err(err) = webbrowser::open(&open_url.url) {
+                eprintln!("Failed to open url: {}", err);
+            }
         }
     }
 }
 
 #[cfg(feature = "clipboard")]
 fn handle_clipboard(output: &egui::PlatformOutput, clipboard: Option<&mut ClipboardContext>) {
-    if !output.copied_text.is_empty() {
-        if let Some(clipboard) = clipboard {
-            if let Err(err) = clipboard.set_contents(output.copied_text.clone()) {
-                eprintln!("Copy/Cut error: {}", err);
+    if let Some(clipboard) = clipboard {
+        for command in &output.commands {
+            if let egui::OutputCommand::CopyText(copied_text) = command {
+                if let Err(err) = clipboard.set_contents(copied_text.clone()) {
+                    eprintln!("Copy/Cut error: {}", err);
+                }
             }
         }
     }
